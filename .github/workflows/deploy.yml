@@ -26,9 +26,4 @@ jobs:
       - name: Build Zola site
         uses: getzola/github-pages@066755243e69f508fd1a74739fbf1a65f656c790
         with:
-          zola_version: "0.19"     # ← Change to your local version if different (run `zola --version`)
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: public
+          zola_version: v0.22.1     # ← Updated to latest stable
