@@ -21,9 +21,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: true   # Important for Zolarwind theme
 
-      - name: Build and deploy with Zola
-        uses: getzola/github-pages@v0.1
+      - name: Build Zola site
+        uses: getzola/github-pages@066755243e69f508fd1a74739fbf1a65f656c790
         with:
-          zola_version: "0.19"
+          zola_version: "0.19"   # Change to your installed version if different
