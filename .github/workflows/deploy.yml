@@ -26,4 +26,15 @@ jobs:
       - name: Build Zola site
         uses: getzola/github-pages@066755243e69f508fd1a74739fbf1a65f656c790
         with:
-          zola_version: v0.22.1     # ← Updated to latest stable
+          zola_version: v0.22.1
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
