@@ -1,4 +1,4 @@
-name: Deploy Zola site to GitHub Pages
+name: Deploy Zola to GitHub Pages
 
 on:
   push:
@@ -21,9 +21,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: true   # Important for Zolarwind theme
+          submodules: true
 
       - name: Build Zola site
         uses: getzola/github-pages@066755243e69f508fd1a74739fbf1a65f656c790
         with:
-          zola_version: "0.19"   # Change to your installed version if different
+          zola_version: "0.19"   # Change if your local version is different
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
