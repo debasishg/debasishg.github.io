@@ -1,0 +1,75 @@
+# The URL the site will be built for
+base_url = "https://debasishg.github.io"
+title = "Ruminations of a Programmer"
+description = "Programming, some math and technical deep dives"
+theme = "zolarwind"
+
+# Whether to automatically compile all Sass files in the sass directory
+compile_sass = true
+
+# Whether to build a search index to be used later on by a JavaScript library
+build_search_index = true
+generate_feeds = true
+default_language = "en"
+
+taxonomies = [
+    { name = "tags", paginate_by = 10, feed = true },
+]
+
+[markdown]
+
+[markdown.highlighting]
+theme = "everforest-light"
+dark_theme = "github-dark"
+style = "class"
+error_on_missing_language = true
+
+[extra]
+# Put all your custom variables here
+title = "Ruminations of a Programmer"
+path_language_resources = "themes/zolarwind/i18n/"
+site_description = "Technical blog focused on systems programming and code"
+code_background = "light"
+
+# Homepage intro
+home_intro = """
+Programmer. Author: **Functional and Reactive Domain Modeling** (Manning 2016), **DSLs In Action** (Manning 2010).
+Father. Husband. Seinfeld fanboy. FP aficionado.
+"""
+
+# Navigation Menu (This makes "Blog" appear and show your posts)
+# ==================== NAVIGATION MENU ====================
+menu_pages = [
+    { title = "Home",  url = "/" },
+    { title = "Blog",  url = "/blog/" },
+    { title = "Tags",  url = "/tags/" },
+]
+
+# Social links - MUST use "link" key (not "url")
+social_links = [
+    {
+        name = "github",
+        link = "https://github.com/debasishg",
+        enabled = true,
+        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.8 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-1.47-3.795-1.47-.495-1.26-1.215-1.59-1.215-1.59-.99-.675.075-.66.075-.66 1.095.075 1.665 1.125 1.665 1.125 1.005 1.71 2.625 1.215 3.255.93.105-.72.39-1.215.705-1.5-2.505-.285-5.13-1.26-5.13-5.595 0-1.23.435-2.25 1.155-3.045-.12-.285-.51-1.44.105-3.015 0 0 .96-.3 3.15 1.17.9-.255 1.845-.375 2.79-.375 1.05 0 2.1.135 3.105.375 2.19-1.47 3.15-1.17 3.15-1.17.615 1.575.225 2.73.105 3.015.72.795 1.155 1.815 1.155 3.045 0 4.335-2.625 5.31-5.13 5.595.405.345.765 1.02.765 2.055 0 1.485-.015 2.685-.015 3.045 0 .315.225.69.825.57C20.565 21.795 24 17.31 24 12c0-6.63-5.37-12-12-12z"/></svg>'
+    },
+    {
+        name = "twitter",
+        link = "https://x.com/debasishg",
+        enabled = true,
+        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25l-7.584 8.556L2.25 2.25H5.07l6.18 8.208L18.75 21.75h-4.5l-5.22-6.93L2.25 21.75h-.75L12 12.75 21.75 2.25z"/></svg>'
+    },
+    {
+        name = "linkedin",
+        link = "https://linkedin.com/in/debasishgh",
+        enabled = true,
+        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.761 0 5-2.239 5-5v-14c0-2.761-2.239-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-1.337-.026-3.057-1.86-3.057-1.862 0-2.147 1.455-2.147 2.957v5.704h-3v-11h2.88v1.504h.041c.402-.76 1.38-1.56 2.844-1.56 3.04 0 3.6 2 3.6 4.6v6.456z"/></svg>'
+    }
+]
+
+# Optional but nice
+toc = true
+toc_levels = { min = 2, max = 4 }
+
+# Optional: copyright
+copyright = "© {year} Debasish Ghosh"

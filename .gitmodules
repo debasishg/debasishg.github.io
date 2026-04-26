@@ -1,0 +1,6 @@
+[submodule "theses/zolarwind"]
+	path = theses/zolarwind
+	url = https://github.com/thomasweitzel/zolarwind.git
+[submodule "themes/zolarwind"]
+	path = themes/zolarwind
+	url = https://github.com/thomasweitzel/zolarwind.git
