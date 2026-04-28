@@ -153,7 +153,7 @@ impl StepExecutor for ParallelExecutor {
 
 What each piece does:
 
-**(1) Clone fields before `async move`.** The returned future is `Send + 'static` (no explicit lifetime bound in the trait signature means the elided lifetime must outlive the future - and since there's no lifetime parameter on the return type, it is `'static`). `async move` captures everything it references by move. If it captured `&self.http_executor`, the future would need to outlive `self`, which means its type would need a lifetime parameter (`+ '_`). The trait said no such parameter. So the body cannot touch `self` directly - it must capture owned clones of Arc-wrapped fields.
+**(1) Clone fields before `async move`.** The returned future is `Send + 'static`. By the **default object bounds** rule (Rust Reference, *Trait object types*), when a `dyn Trait` appears inside `Box<…>`, `Rc<…>`, or `Arc<…>` without an explicit lifetime, the bound defaults to `'static`. So `Pin<Box<dyn Future<Output = …> + Send>>` is shorthand for `Pin<Box<dyn Future<Output = …> + Send + 'static>>`. `async move` captures everything it references by move. If it captured `&self.http_executor`, the future would need to outlive `self`, which means its type would need a lifetime parameter (`+ '_`). The trait said no such parameter. So the body cannot touch `self` directly - it must capture owned clones of Arc-wrapped fields.
 
 **(2) `Box::pin(async move { ... })`.** The `async move { ... }` block produces some compiler-generated future type with the moved-in captures. `Box::pin` heap-allocates it and pins it - pinning is required because futures may self-reference (an await point can borrow locals that live in the future's state machine), and moving such a future invalidates those borrows. Pinning prevents the move. Once allocated and pinned, we erase the concrete type by coercing to `Pin<Box<dyn Future<Output = T> + Send>>`.
 
@@ -230,12 +230,12 @@ pub trait StepExecutor: Send + Sync {
 }
 ```
 
-At expansion time, the macro rewrites both the trait and every `#[async_trait] impl` into the manual form we just showed. The return type becomes `Pin<Box<dyn Future<Output = ...> + Send + 'async_trait>>` (with a generated lifetime that matches `&self`); the body gets wrapped in `Box::pin(async move { ... })`; and a handful of scaffolding traits are generated.
+At expansion time, the macro rewrites both the trait and every `#[async_trait] impl` into the manual form we just showed. The return type becomes `Pin<Box<dyn Future<Output = ...> + Send + 'async_trait>>`, where `'async_trait` is a generated lifetime bound to `&self`. That is the §4.3 borrowing form, **not** the `'static` form from §3 - the macro lets the future borrow `self` for the duration of the call, so impls can write `self.field.do_work().await` without cloning. By default the macro adds `+ Send`; opt out with `#[async_trait(?Send)]` for futures that don't cross thread boundaries.
 
 That is:
 
-- `#[async_trait]` style and manual style produce **byte-identical** compiled output in many cases.
-- The macro is a purely syntactic shortcut. It buys you nothing at runtime.
+- `#[async_trait]` style and the §4.3 manual form produce **equivalent** desugaring; the macro is a purely syntactic shortcut and buys you nothing at runtime.
+- It is **not** equivalent to the §3 `'static` form. If you want a spawnable, owns-its-data future, the macro alone won't give you that - you still write the clone-before-`async move` dance inside the impl, just without the outer `Pin<Box<…>>` ceremony.
 - The cost of the macro is an extra dependency, some compile-time overhead, and a layer of obfuscation when reading expanded diagnostics.
 - The cost of the manual form is ~5 more lines per method: one `fn` signature with `Pin<Box<…>>`, one `Box::pin(async move { … })`, one set of field clones.
 
@@ -278,6 +278,10 @@ pub trait StepExecutor: Send + Sync {
 Callers use generics: `fn run<E: StepExecutor>(e: E)` rather than `fn run(e: Box<dyn StepExecutor>)`. The compiler monomorphizes, inlines, and produces tight code with no boxed futures.
 
 Downside: you lose type erasure. Everywhere `StepExecutor` appears in a signature, the concrete impl leaks through as a generic parameter. If you were using `dyn` specifically to hide the impl from downstream code (test vs production, feature-gated variants), that hiding is gone.
+
+There is a second, more subtle downside - the **Send bound problem**. With native `async fn` in traits, you cannot directly write "the returned future must be `Send`" in the trait declaration. The desugared `impl Future` is opaque; there is no straightforward syntax to constrain its auto-traits at the trait-definition site. A consumer that needs to `tokio::spawn` the future therefore has no way to demand `Send` from the trait alone. This is exactly why many codebases on Rust 1.75+ still reach for `#[async_trait]` even when they use generics: the macro's expansion to `Pin<Box<dyn Future + Send + 'async_trait>>` makes `Send` a contractual part of the trait signature.
+
+The language has partial answers - **return-type notation** (`where T::method(..): Send`, still being stabilized) lets a caller demand `Send` on a per-method basis at the use site, and the [`trait-variant`](https://docs.rs/trait-variant) crate generates a parallel `Send`-flavored trait from a single declaration - but neither is as ergonomic as the boxed form for the "every future must be `Send`" case. If your trait is intended for spawning, the boxed `dyn` form remains the path of least resistance.
 
 ### 6.3 Both, via a helper `Boxed<T>` wrapper
 
