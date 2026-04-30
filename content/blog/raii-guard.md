@@ -4,6 +4,8 @@ date = 2026-04-30
 description = "Explains RAII in Rust as the primary, statically-enforced mechanism for resource management."
 template = "page.html"
 
+[taxonomies]
+tags = ["rust", "async", "raii", "pattern" ]
 [extra]
 mermaid = true
 +++
