@@ -11,8 +11,9 @@ compile_sass = true
 build_search_index = true
 generate_feeds = true
 
-# Choose the feed format(s)
-feed_filenames = ["rss.xml"]         
+# Choose the feed format(s). rss.xml is the primary feed; atom.xml is also
+# generated because the theme emits an Atom auto-discovery <link> in <head>.
+feed_filenames = ["rss.xml", "atom.xml"]
 
 # Optional: Limit number of posts in the feed (recommended)
 feed_limit = 30

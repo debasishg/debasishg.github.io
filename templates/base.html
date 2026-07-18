@@ -1,0 +1,12 @@
+{% extends "zolarwind/templates/base.html" %}
+{# Site-level override: extend the theme base and advertise the RSS feed  #}
+{# for reader auto-discovery on pages that don't replace head_extra. The   #}
+{# theme itself emits an Atom <link> site-wide; both feeds are generated.  #}
+{% block head_extra %}
+  {% if config.generate_feeds %}
+  <link rel="alternate"
+      type="application/rss+xml"
+      title="{{ config.title }} - RSS Feed"
+      href="{{ get_url(path='rss.xml', trailing_slash=false) }}">
+  {% endif %}
+{% endblock head_extra %}
