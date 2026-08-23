@@ -206,5 +206,29 @@ In every case the recipe is the same:
 
 The structure looks lock-free either way. The difference between the two versions is whether the hardware agrees.
 
+---
+
+## Errata
+
+*Added 2026-08-23.*
+
+**The struct listing is out of date, and there is a fourth zone.** Fixing a data race in the reference implementation ([ringmpsc-rs#5](https://github.com/debasishg/ringmpsc-rs/issues/5), [PR #6](https://github.com/debasishg/ringmpsc-rs/pull/6)) changed the tail of the struct. `Ring` now carries a raw base pointer to slot 0, and the buffer handle sits behind an extra `Box`:
+
+```rust
+    // COLD
+    closed:      AtomicBool,
+    metrics:     Metrics,
+    config:      Config,
+
+    base:        *mut MaybeUninit<T>,          // new
+    buffer:      Box<UnsafeCell<A::Buffer<T>>>, // was UnsafeCell<A::Buffer<T>>
+```
+
+Every layout argument in this post survives unchanged: `#[repr(C)]` is still load-bearing, the hot zones are still padded, and the cold fields are still packed on purpose.
+
+But `base` doesn't fit the three zones this post names, and the mismatch is interesting rather than awkward. It is read by **both** cores on **every** operation, and written **never** after construction. That makes it a fourth category - *immutable shared* - and the reason it can sit unpadded next to `closed`, `metrics`, and `config` is precisely the thesis of this post: zoning protects against lines that get *written* from one core while being *read* from another. A line that nobody writes can be shared by every core forever, in each one's cache, with no coherence traffic at all. Read-only data is the cheapest thing in a concurrent structure, which is why "cold" and "shared" are not the same axis, and why the right question for placing a field is never "is it hot?" but "who writes it?"
+
+Two smaller notes. The extra `Box` on `buffer` is what pins the buffer handle at a fixed address so `base` stays valid across moves of the `Ring`; it costs one allocation at construction and is never touched on a hot path. And it makes the field 8 bytes rather than 16, which changes nothing about the zoning since it lives in the packed cold tail.
+
 [repr]: https://doc.rust-lang.org/reference/type-layout.html#the-rust-representation
 [cachepadded]: https://docs.rs/crossbeam-utils/latest/crossbeam_utils/struct.CachePadded.html

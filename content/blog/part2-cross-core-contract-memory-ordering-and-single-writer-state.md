@@ -243,3 +243,27 @@ And the general discipline that ties Parts 1 and 2 together: **every `unsafe` bl
 Minimum-sufficient ordering and single-writer state are the same principle applied at two levels. Ordering asks: *given that I need an atomic, what's the cheapest correct contract with the hardware?* Single-writer asks the question one level up: *do I need the atomic at all?* In both cases the move is to pay for exactly the synchronization the algorithm requires and not one fence more. Loosely this can correspond to the more general principle of using the least powerful abstraction when it comes to software engineering.
 
 There's a third level to this same principle: sometimes you don't need the cross-core *read* either, because a private, conservative snapshot of the other core's cursor is good enough on the fast path. That snapshot is exactly the single-writer `UnsafeCell` cache introduced here. In Part 3 we will turn it into a throughput win.
+
+---
+
+## Errata
+
+*Added 2026-08-23.*
+
+**`UnsafeCell` is no longer the only reason `Ring` opts out of `Sync`.** The text above says a type containing `UnsafeCell<T>` is deliberately not `Sync`, which is still true. But after the fix in [ringmpsc-rs#5](https://github.com/debasishg/ringmpsc-rs/issues/5) / [PR #6](https://github.com/debasishg/ringmpsc-rs/pull/6), `Ring` also holds a `base: *mut MaybeUninit<T>`, and raw pointers are independently `!Send + !Sync`. Either field alone would force the hand-written impl; the conclusion of this section is unchanged, and if anything the case is now overdetermined.
+
+**The `SAFETY` block needs one more clause.** As written it covers the cursors, the visibility protocol, the `[head, tail)` ownership range, and `T: Send`. It should also record what the new pointer asserts:
+
+```rust
+// - `base` is derived once, before the ring is shared, and never
+//   re-derived. It points into the allocation owned by `buffer`, which
+//   outlives every use of `base`.
+```
+
+**A postscript worth more than the correction.** This block contains the clause:
+
+> Buffer-slot ownership is transferred by the `[head, tail)` range invariant: outside that range, slots are exclusively the producer's to write; inside it, exclusively the consumer's to read.
+
+That clause was, and remains, exactly right. Issue #5 was a data race that violated it anyway - not because the protocol was wrong, but because the *code* formed references spanning the whole buffer before narrowing to the slot the protocol granted, and under Rust's aliasing model creating a reference is itself an access to everything it covers. The proof was sound and the implementation claimed more than the proof allowed.
+
+That is the argument for writing these proofs down, and also its limit: a `SAFETY` block is checked by a human against the code's *intent*, never against its actual memory effects. [Part 7](https://debasishg.github.io/blog/part7-safety-as-performance-moves-borrow-checker-debug-assert/) takes this up under *"A reference is wider than you think"*, and Part 8 is about the tooling - Miri, Loom - that checks what the comment cannot.

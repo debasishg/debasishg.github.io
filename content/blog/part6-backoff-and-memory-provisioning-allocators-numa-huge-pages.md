@@ -325,3 +325,24 @@ The same provisioning concerns apply to anything with large, long-lived backing 
 Parts 1–5 made the steady state fast; Part 6 provisioned the two resources that steady state assumed - *time*, by waiting well when the structure is full, and *memory*, by controlling where the buffer comes from and where it physically lives. Notice how much of this reuses machinery from earlier posts: backoff fills in Part 4's backpressure branch, and the allocator trait leans on Part 5's ZST default and Part 2's `Sync` proof. The pieces compose.
 
 Six posts in, we've examined a single structure from nearly every hardware angle.  The remaining posts change the lens. The next one is about a distinctly *Rust* idea that's run quietly underneath everything so far: that the language's own safety machinery - move semantics, the borrow checker, `debug_assert!` - is not a tax on performance but a *tool* for it. That's where Part 7, *Safety as Performance*, goes.
+
+---
+
+## Errata
+
+*Added 2026-08-23.*
+
+**`reserve_with_backoff` takes `&mut self`, not `&self`.** The signature shown above is:
+
+```rust
+pub fn reserve_with_backoff(&self, n: usize) -> Option<Reservation<'_, T, A>> {
+```
+
+It should be `&mut self`, matching `reserve` as shown in [Part 3](https://debasishg.github.io/blog/part3-amortizing-cross-core-coordination-caching-and-batching/) and [Part 4](https://debasishg.github.io/blog/part4-zero-copy-reserve-commit-and-fast-slow-path-splitting/). This is not cosmetic. With `&self`, two calls borrow-check happily, and because the cursor does not advance until `commit()`, both are handed `&mut` slices over the *same* slots - two live `&mut` aliasing the same memory, with no concurrency required to trigger it. The `&mut` receiver is what makes "one outstanding reservation per producer" a compile-time property instead of an unwritten rule.
+
+The backoff argument in this post - spin, then yield, then give up, and the `Backoff` state machine itself - is entirely unaffected. Only the receiver is wrong.
+
+- Filed as [ringmpsc-rs#7](https://github.com/debasishg/ringmpsc-rs/issues/7), fixed in [PR #8](https://github.com/debasishg/ringmpsc-rs/pull/8).
+- [Part 7](https://debasishg.github.io/blog/part7-safety-as-performance-moves-borrow-checker-debug-assert/) works through which protocol guarantee each part of the signature actually buys, since `&mut self`, the borrow's mere existence, and `commit(self)` are easily conflated.
+
+**A note on the allocator trait.** Nothing in the `BufferAllocator` design above is wrong, but it is worth recording that the `type Buffer<T>: Deref<Target = [MaybeUninit<T>]> + DerefMut` bound is what made a separate bug possible ([#5](https://github.com/debasishg/ringmpsc-rs/issues/5)): every deref through it yields a slice spanning the entire allocation, and forming that reference is itself an access to every slot. The trait's convenience was the vector. NUMA binding, huge pages, and RAII deallocation are all unaffected - the fix caches a base pointer and stops dereferencing the handle on hot paths.

@@ -261,3 +261,31 @@ The same amortize-the-expensive-operation move shows up all over systems code:
 Caching and batching look like different techniques, but they're the same idea aimed at the same cost. The cross-core atomic is expensive, so: **avoid it when a conservative local snapshot will do, and amortize it across many items when you can't avoid it.** Caching removes the read on the fast path; batching removes it from the per-item path. Used together, a busy producer/consumer pair touches shared memory a tiny fraction as often as a naive one-atomic-per-item design - which is what turns the careful layout of Part 1 and the correct ordering of Part 2 into actual throughput.
 
 There's a third move hiding in the `reserve()` example above: the producer wrote *directly* into the ring's slots via the reservation, with no intermediate copy.  That zero-copy `reserve`/`commit` protocol - and the fast-path/slow-path discipline that the caching example is one instance of - is where Part 4 goes.
+
+---
+
+## Errata
+
+*Added 2026-08-23.*
+
+**The buffer access in the batch consume loop is unsound.** The loop above reads each slot like this:
+
+```rust
+let item = unsafe {
+    let buf = &*self.buffer.get();   // WRONG
+    buf[idx].assume_init_read()
+};
+```
+
+The backing store derefs to `[MaybeUninit<T>]` spanning the **whole** allocation, so `buf` is a reference covering every slot in the ring - including the ones the producer is writing right now. Narrowing to `buf[idx]` on the next line is too late: under Rust's aliasing model, *creating* a reference counts as an access to everything it covers, so merely forming `buf` races with the producer's write. The batching argument in this post is unaffected, and so is the range invariant the SAFETY comment appeals to - the slots each side touches really are disjoint. The reference simply claimed more than the protocol granted.
+
+Miri reports it as a data race under both Stacked and Tree Borrows. The fix is to never form the wide reference: capture a base pointer once at construction and do raw-pointer arithmetic on the hot path, so nothing is retagged beyond the single slot being touched.
+
+```rust
+let item = unsafe { self.slot(idx).read().assume_init() };
+```
+
+- Filed as [ringmpsc-rs#5](https://github.com/debasishg/ringmpsc-rs/issues/5), fixed in [PR #6](https://github.com/debasishg/ringmpsc-rs/pull/6).
+- [Part 7](https://debasishg.github.io/blog/part7-safety-as-performance-moves-borrow-checker-debug-assert/) discusses this at length under *"A reference is wider than you think"*, including why an `unsafe` block can be audited carefully for bounds and still be wrong about a reference's extent.
+
+Everything else in this post stands, including the `reserve(&mut self)` signature - see the erratum on [Part 6](https://debasishg.github.io/blog/part6-backoff-and-memory-provisioning-allocators-numa-huge-pages/), where the same method was shown taking `&self`.
