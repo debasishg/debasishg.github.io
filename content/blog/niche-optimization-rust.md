@@ -1,8 +1,7 @@
 +++
 title = "Niche Optimization in Rust: How `Option` can Get to Be Free"
 date = 2026-09-20
-description = "Most types cannot use every bit pattern their bytes can hold, and the Rust compiler spends the leftovers on enum discriminants. Where niches
-come from, and where the trick stops working."
+description = "Most types cannot use every bit pattern their bytes can hold, and the Rust compiler spends the leftovers on enum discriminants. Where niches come from, and where the trick stops working."
 template = "page.html"
 
 [taxonomies]
